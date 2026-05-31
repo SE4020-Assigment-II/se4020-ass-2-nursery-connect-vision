@@ -12,6 +12,8 @@ import SwiftUI
 
 struct ContentView: View {
     @Environment(DashboardViewModel.self) private var model
+    @Environment(\.openWindow) private var openWindow
+    @Environment(\.dismissWindow) private var dismissWindow
 
     var body: some View {
         @Bindable var model = model
@@ -29,6 +31,11 @@ struct ContentView: View {
         // Floating ornament toolbar beside the window.
         .ornament(attachmentAnchor: .scene(.bottom)) {
             DashboardOrnament()
+        }
+        // Open/close the 3D nursery-room volume from the ornament toggle.
+        .onChange(of: model.isRoomOpen) { _, open in
+            if open { openWindow(id: "nurseryRoom") }
+            else    { dismissWindow(id: "nurseryRoom") }
         }
     }
 }
