@@ -20,8 +20,9 @@ enum NurseryRoomBuilder {
         root.name = "RoomRoot"
 
         root.addChild(makeFloor())
-        root.addChild(makeWall(width: 0.6, at: [0, 0.11, -0.3]))                  // back wall
-        root.addChild(makeWall(width: 0.6, at: [-0.3, 0.11, 0]).rotatedY(.pi / 2)) // left wall
+        // A single low back wall behind the pegs reads as a locker unit without
+        // occluding the day panel (the old left wall jutted toward the viewer).
+        root.addChild(makeWall(width: 0.6, at: [0, 0.08, -0.3]))
 
         // Row of pegs along the back, evenly spaced and centred.
         let spacing: Float = 0.11
@@ -53,9 +54,10 @@ enum NurseryRoomBuilder {
         return floor
     }
 
-    /// A low wall; taller than the pegs so the scene reads as a room, not a shelf.
+    /// A low back wall that sits just behind and around peg height, framing the
+    /// lockers without towering over them or blocking the floating panel.
     private static func makeWall(width: Float, at position: SIMD3<Float>) -> Entity {
-        let mesh = MeshResource.generateBox(width: width, height: 0.22, depth: 0.01,
+        let mesh = MeshResource.generateBox(width: width, height: 0.16, depth: 0.01,
                                             cornerRadius: 0.004)
         let mat  = SimpleMaterial(color: .init(white: 0.92, alpha: 1), isMetallic: false)
         let wall = ModelEntity(mesh: mesh, materials: [mat])
@@ -108,13 +110,5 @@ enum NurseryRoomBuilder {
         let palette: [UIColor] = [.systemTeal, .systemPink, .systemOrange,
                                   .systemIndigo, .systemGreen]
         return palette[i % palette.count]
-    }
-}
-
-private extension Entity {
-    /// Returns self after rotating about the Y axis (chaining helper).
-    func rotatedY(_ radians: Float) -> Entity {
-        orientation = simd_quatf(angle: radians, axis: [0, 1, 0])
-        return self
     }
 }
