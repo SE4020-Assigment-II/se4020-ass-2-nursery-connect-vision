@@ -3,9 +3,10 @@
 //  NurseryConnectVision
 //
 //  Builds the bounded nursery-room scene entirely in code (no Reality Composer
-//  Pro): floor + two low walls + a row of coloured "pegs", one per child, each
-//  with a floating name plate. Every peg is interaction-ready (tag, input
-//  target, hover, collision) so Phase D can wire taps without rebuilding.
+//  Pro): floor + two walls + a row of coloured "pegs", one per child, each with
+//  a centred floating name plate. Every peg is interaction-ready (tag, input
+//  target, styled hover, collision, accessibility) so Phase D wires taps and
+//  Phase E gets clean affordances without rebuilding.
 //
 
 import RealityKit
@@ -19,8 +20,8 @@ enum NurseryRoomBuilder {
         root.name = "RoomRoot"
 
         root.addChild(makeFloor())
-        root.addChild(makeWall(width: 0.6, at: [0, 0.06, -0.3]))                 // back wall
-        root.addChild(makeWall(width: 0.6, at: [-0.3, 0.06, 0]).rotatedY(.pi / 2)) // left wall
+        root.addChild(makeWall(width: 0.6, at: [0, 0.11, -0.3]))                  // back wall
+        root.addChild(makeWall(width: 0.6, at: [-0.3, 0.11, 0]).rotatedY(.pi / 2)) // left wall
 
         // Row of pegs along the back, evenly spaced and centred.
         let spacing: Float = 0.11
@@ -30,6 +31,15 @@ enum NurseryRoomBuilder {
             peg.position = [startX + spacing * Float(i), 0.10, -0.22]
             root.addChild(peg)
         }
+
+        // Phase E: directional fill so materials aren't flat + soft contact shadow.
+        let light = DirectionalLight()
+        light.light.intensity = 1200
+        light.light.color = .white
+        light.shadow = DirectionalLightComponent.Shadow()
+        light.orientation = simd_quatf(angle: -.pi / 3, axis: [1, 0.2, 0])
+        root.addChild(light)
+
         return root
     }
 
@@ -43,8 +53,9 @@ enum NurseryRoomBuilder {
         return floor
     }
 
+    /// A low wall; taller than the pegs so the scene reads as a room, not a shelf.
     private static func makeWall(width: Float, at position: SIMD3<Float>) -> Entity {
-        let mesh = MeshResource.generateBox(width: width, height: 0.12, depth: 0.01,
+        let mesh = MeshResource.generateBox(width: width, height: 0.22, depth: 0.01,
                                             cornerRadius: 0.004)
         let mat  = SimpleMaterial(color: .init(white: 0.92, alpha: 1), isMetallic: false)
         let wall = ModelEntity(mesh: mesh, materials: [mat])
@@ -52,7 +63,7 @@ enum NurseryRoomBuilder {
         return wall
     }
 
-    /// A coloured locker box + floating name label, fully tap-ready.
+    /// A coloured locker box + centred floating name label, fully tap-ready.
     private static func makePeg(for child: Child, index: Int) -> Entity {
         let peg = Entity()
         peg.name = "Peg-\(child.id.uuidString)"
@@ -63,23 +74,33 @@ enum NurseryRoomBuilder {
         )
         peg.addChild(box)
 
-        // Floating name plate above the locker.
+        // Floating name plate, centred above the locker.
         let label = ModelEntity(
             mesh: .generateText(child.pegLabel,
                                 extrusionDepth: 0.001,
-                                font: .systemFont(ofSize: 0.018),
+                                font: .systemFont(ofSize: 0.014),
                                 alignment: .center),
             materials: [UnlitMaterial(color: .white)]
         )
-        label.position = [-0.03, 0.07, 0.021]
+        // generateText anchors at the baseline-left; recentre it over the peg.
+        let textWidth = label.visualBounds(relativeTo: nil).extents.x
+        label.position = [-textWidth / 2, 0.075, 0.021]
         peg.addChild(label)
 
         // Interaction-ready components.
         peg.components.set(ChildTagComponent(childID: child.id))
         peg.components.set(InputTargetComponent())
-        peg.components.set(HoverEffectComponent())
-        peg.generateCollisionShapes(recursive: true)   // CollisionComponent for the whole peg
+        peg.components.set(HoverEffectComponent(.highlight(.init(color: .white, strength: 1.2))))
 
+        // Phase E: VoiceOver announces each peg with the child + room and a hint.
+        var a11y = AccessibilityComponent()
+        a11y.isAccessibilityElement = true
+        a11y.label = LocalizedStringResource("\(child.fullName), \(child.roomGroup)")
+        a11y.value = "Double-tap to open today’s summary"
+        a11y.traits = [.button]
+        peg.components.set(a11y)
+
+        peg.generateCollisionShapes(recursive: true)   // CollisionComponent for the whole peg
         return peg
     }
 
