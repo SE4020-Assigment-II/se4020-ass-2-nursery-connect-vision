@@ -9,17 +9,28 @@
 //
 
 import SwiftUI
+import RealityKit
 
 @main
 struct NurseryConnectVisionApp: App {
     @State private var model = DashboardViewModel(store: .seeded())
 
-    var body: some Scene {
+    init() {
+        ChildTagComponent.registerComponent()
+    }
+
+    var body: some SwiftUI.Scene {
         WindowGroup {
             ContentView()
                 .environment(model)
         }
         .defaultSize(width: 520, height: 680)
-        // Phase C adds: WindowGroup(id: "nurseryRoom") { … }.windowStyle(.volumetric)
+
+        WindowGroup(id: "nurseryRoom") {
+            NurseryRoomView()
+                .environment(model)
+        }
+        .windowStyle(.volumetric)
+        .defaultSize(width: 0.6, height: 0.6, depth: 0.6, in: .meters)
     }
 }
