@@ -11,12 +11,13 @@ import SwiftUI
 
 struct ChildDayPanel: View {
     @Environment(DashboardViewModel.self) private var model
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     let child: Child
 
     private var summary: DaySummary { model.summary(for: child) }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        let card = VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text(child.fullName).font(.title2.bold())
                 Spacer()
@@ -45,6 +46,14 @@ struct ChildDayPanel: View {
         }
         .padding(20)
         .frame(width: 320)
-        .glassBackgroundEffect()
+
+        // Phase E: solid material when Reduce Transparency is on, glass otherwise.
+        return Group {
+            if reduceTransparency {
+                card.background(.regularMaterial, in: .rect(cornerRadius: 20))
+            } else {
+                card.glassBackgroundEffect()
+            }
+        }
     }
 }
