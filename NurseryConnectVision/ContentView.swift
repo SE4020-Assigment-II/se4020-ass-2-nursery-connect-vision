@@ -52,6 +52,8 @@ private struct DashboardOrnament: View {
                 Label("Nursery Room", systemImage: "cube.transparent")
             }
             .toggleStyle(.button)
+            .accessibilityLabel("Nursery Room")
+            .accessibilityHint("Opens or closes the 3D nursery room volume")
 
             Divider().frame(height: 24)
 
