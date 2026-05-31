@@ -4,9 +4,11 @@
 //
 //  Hosts the programmatic nursery room in a RealityView and wires the three
 //  required spatial interactions:
-//    1. Tap a peg  -> the child's day panel slides out, anchored in 3D.
+//    1. Tap a peg  -> the child's day panel floats out, anchored in 3D.
 //    2. Drag       -> rotate the whole room (walk-around the volume).
 //    3. Chime      -> spatial confirmation sound from the tapped peg.
+//
+//  Phase E: respects Reduce Motion (no spring on select, gentler rotate).
 //
 
 import SwiftUI
@@ -14,6 +16,7 @@ import RealityKit
 
 struct NurseryRoomView: View {
     @Environment(DashboardViewModel.self) private var model
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         RealityView { content, _ in
@@ -22,9 +25,9 @@ struct NurseryRoomView: View {
             room.position = [0, -0.15, 0]
             content.add(room)
         } update: { content, attachments in
-            // Anchor the panel attachment to the selected peg.
+            // Anchor the panel attachment above-and-in-front of the selected peg,
+            // clear of the floating name plates.
             guard let root = content.entities.first(where: { $0.name == "RoomRoot" }) else { return }
-            // Remove any previous panel anchor.
             root.children.filter { $0.name == "PanelAnchor" }.forEach { $0.removeFromParent() }
 
             if let child = model.selectedChild,
@@ -32,7 +35,7 @@ struct NurseryRoomView: View {
                let panel = attachments.entity(for: "dayPanel") {
                 let anchor = Entity()
                 anchor.name = "PanelAnchor"
-                anchor.position = peg.position(relativeTo: root) + [0.16, 0.06, 0]
+                anchor.position = peg.position(relativeTo: root) + [0, 0.22, 0.16]
                 anchor.addChild(panel)
                 root.addChild(anchor)
             }
@@ -41,7 +44,9 @@ struct NurseryRoomView: View {
                 Attachment(id: "dayPanel") {
                     ChildDayPanel(child: child)
                         .environment(model)
-                        .transition(.move(edge: .leading).combined(with: .opacity))
+                        .transition(reduceMotion
+                                    ? .opacity
+                                    : .move(edge: .top).combined(with: .opacity))
                 }
             }
         }
@@ -58,7 +63,7 @@ struct NurseryRoomView: View {
                     guard let peg = entity,
                           let tag = peg.components[ChildTagComponent.self],
                           let child = model.store.child(withID: tag.childID) else { return }
-                    withAnimation(.spring) { model.select(child) }
+                    withAnimation(reduceMotion ? nil : .spring) { model.select(child) }
                     AudioCue.playChime(from: peg)
                 }
         )
@@ -69,8 +74,9 @@ struct NurseryRoomView: View {
                 .onChanged { value in
                     guard let root = value.entity.scene?
                         .findEntity(named: "RoomRoot") else { return }
+                    let sensitivity: Float = reduceMotion ? 0.0025 : 0.005
                     let dx = Float(value.translation.width)
-                    root.orientation = simd_quatf(angle: dx * 0.005, axis: [0, 1, 0])
+                    root.orientation = simd_quatf(angle: dx * sensitivity, axis: [0, 1, 0])
                 }
         )
     }
